@@ -1,0 +1,73 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init 
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+model User {
+  id           Int         @id @default(autoincrement())
+  email        String      @unique
+  password     String
+  name         String?
+  provider     Provider    @default(CREDENTIALS)
+  registered   Boolean     @default(false)
+  CourseFilled Boolean     @default(false)
+  role         Role        @default(Student)
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+  studyPlan    StudyPlan?  // Relation to StudyPlan
+}
+
+model StudyPlan {
+  id        Int      @id @default(autoincrement())
+  planName  String   // Name of the course (e.g., "JEE", "Machine Learning")
+  totalDays Int      // Total number of days in the plan
+  userId    Int      @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade) // Cascade delete on User
+  createdAt DateTime @default(now())
+  planData  Json     // Stores the entire study plan in JSON format
+  days      Day[]    // One-to-many relation with Day (no onDelete here)
+  CourseProgress Decimal  @default(0.0)
+}
+
+model Day {
+  id           Int         @id @default(autoincrement())
+  studyPlan    StudyPlan   @relation(fields: [studyPlanId], references: [id], onDelete: Cascade) // Cascade delete on StudyPlan
+  studyPlanId  Int         // Foreign key to reference StudyPlan
+  dayNumber    Int         // Day number (e.g., 1, 2, etc.)
+  dayData      Json        // Stores the dynamic content of subjects, chapters, topics for this day
+  createdAt    DateTime    @default(now())
+  progress     Decimal 
+  topics       Topics[]  
+}
+
+model Topics {
+  id        Int      @id @default(autoincrement())
+  day       Day      @relation(fields: [dayId], references: [id], onDelete: Cascade) 
+  dayId     Int      // Foreign key to reference Day
+  daynumber Int
+  topicData Json
+  completed Boolean  @default(false)
+}
+
+enum Role {
+  Student
+  Professional
+}
+
+enum Provider {
+  GOOGLE
+  GITHUB
+  CREDENTIALS
+}
+
+
