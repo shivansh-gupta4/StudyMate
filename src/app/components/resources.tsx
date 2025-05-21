@@ -230,71 +230,65 @@ const getMockVideos = (topic: string): YouTubeVideo[] => {
 
 // Mock function to generate a summary of the video
 const generateVideoSummary = async (videoId: string, topic: string) => {
-  const url = `https://youtube-summarizer2.p.rapidapi.com/summarize?id=${videoId}`;
-  const options = {
-    method: 'GET',
-    headers: {
-      'x-rapidapi-key': ' ', //process.env.NEXT_PUBLIC_RAPIDAPI_KEY || '',
-      'x-rapidapi-host': 'youtube-summarizer2.p.rapidapi.com'
-    }
-  };
+  await new Promise((resolve) => setTimeout(resolve, 1500)) // Simulate API delay
 
-  try {
-    const response = await fetch(url, options);
-    const result = await response.json();
-    console.log(result);
-    return {
-      summary: result.summary
-    };
-  } catch (error) {
-    console.error("Error generating summary:", error);
-    // Fallback to mock data if API fails
-    return {
-      summary: `This video covers the essential concepts of ${topic}. It starts with an introduction to the basic principles and gradually moves into more advanced topics. The instructor explains key techniques, common pitfalls to avoid, and best practices for implementation. Several real-world examples are provided to illustrate how these concepts apply in practical scenarios. The video concludes with recommendations for further learning and practice exercises.`
-    };
+  return {
+    summary: `This video covers the essential concepts of ${topic}. It starts with an introduction to the basic principles and gradually moves into more advanced topics. The instructor explains key techniques, common pitfalls to avoid, and best practices for implementation. Several real-world examples are provided to illustrate how these concepts apply in practical scenarios. The video concludes with recommendations for further learning and practice exercises.`,
+    keyPoints: [
+      "Introduction to core concepts of " + topic,
+      "Step-by-step implementation guide",
+      "Common mistakes to avoid",
+      "Best practices and optimization techniques",
+      "Real-world application examples",
+    ],
   }
 }
 
-// Add type for the API response
-type ApiResponse = {
-  success: boolean;
-  error?: string;
-};
+// Function to fetch transcript for a video
+const getVideoTranscript = async (videoId: string) => {
+  // In a real app, you would use the YouTube Captions API to get the transcript
+  // For now, we'll use mock data
+  await new Promise((resolve) => setTimeout(resolve, 800)) // Simulate API delay
 
-// Update debounce utility function with proper types
-const debounce = <T extends (...args: any[]) => Promise<ApiResponse>>(func: T, wait: number) => {
-  let timeout: NodeJS.Timeout | null = null;
-  return (...args: Parameters<T>): Promise<ApiResponse> => {
-    return new Promise((resolve) => {
-      if (timeout) clearTimeout(timeout);
-      timeout = setTimeout(async () => {
-        const result = await func(...args);
-        resolve(result);
-      }, wait);
-    });
-  };
-};
+  return [
+    { time: "0:00", text: "Hello and welcome to this tutorial." },
+    { time: "0:15", text: "Today we'll be covering the core concepts that every developer needs to know." },
+    { time: "0:30", text: "Let's start by understanding what this topic is all about." },
+    { time: "0:45", text: "This is a fundamental concept in modern development." },
+    { time: "1:00", text: "It's used for handling complex operations efficiently." },
+    { time: "1:15", text: "We can create reusable components that can manage their own state." },
+    { time: "1:30", text: "One of the key features is optimization of performance." },
+    { time: "1:45", text: "Now let's look at how to implement this in practice." },
+    { time: "2:00", text: "We'll start by setting up our environment." },
+    { time: "2:15", text: "Then we define our main structure and components." },
+    { time: "2:30", text: "Every component must follow these principles." },
+    { time: "2:45", text: "This syntax allows us to write clean, maintainable code." },
+    { time: "3:00", text: "Let's create a simple example to demonstrate." },
+    { time: "3:15", text: "We'll define a class that implements the core functionality." },
+    { time: "3:30", text: "In the main method, we'll handle the primary operations." },
+    { time: "3:45", text: "Now we can use this in our application by importing it." },
+    { time: "4:00", text: "Next, let's talk about advanced techniques." },
+    { time: "4:15", text: "These are read-only and help make our code more robust." },
+    { time: "4:30", text: "We can access these properties using standard methods." },
+    { time: "4:45", text: "Let's modify our example to implement these advanced features." },
+    { time: "5:00", text: "Now we have a fully functional implementation ready to use." },
+  ]
+}
 
-// Update the markTopicAsComplete function with proper return type
-const markTopicAsComplete = async (topic: string, isCompleted: boolean): Promise<ApiResponse> => {
+// Update the function to handle both completion and incompletion
+const markTopicAsComplete = async (topic: string, isCompleted: boolean) => {
   try {
-    // The topic string will be in format "Course Name+sep+Topic Name"
-    const [courseName, topicName] = topic.split('+sep+');
+    // Extract the course name and topic from the full topic string
+    const [courseName, subTopic] = topic.split('+sep+')
     
-    if (!courseName || !topicName) {
-      console.error('Invalid topic format:', topic);
-      return { success: false, error: 'Invalid topic format' };
-    }
     // Prepare the data to send to the API
     const data = {
-      topicName: topicName,
-      isCompleted: isCompleted
+      courseName: courseName.replace(/\+/g, ' '), // Convert + back to spaces
+      topicName: subTopic.replace(/\+/g, ' '),   // Convert + back to spaces
+      isCompleted: isCompleted,
+      completedAt: isCompleted ? new Date().toISOString() : null, // Track completion time
+      userId: localStorage.getItem('userId') // Assuming you store userId in localStorage
     }
-
-    console.log('Sending completion update:', {
-      originalTopic: topic,
-      parsedData: data
-    });
 
     // Make the API call to update the completion status
     const response = await fetch('/api/topics/completion', {
@@ -305,23 +299,29 @@ const markTopicAsComplete = async (topic: string, isCompleted: boolean): Promise
       body: JSON.stringify(data)
     })
 
-    const responseData = await response.json();
-    console.log('Received response:', responseData);
-
     if (!response.ok) {
-      throw new Error(responseData.error || 'Failed to update completion status');
+      throw new Error('Failed to update topic completion status')
     }
 
-    return { success: true };
+    // Update local storage to maintain UI state
+    const completedTopics = JSON.parse(localStorage.getItem("completedTopics") || "{}")
+    if (isCompleted) {
+      completedTopics[topic] = {
+        completedAt: data.completedAt,
+        topicName: data.topicName
+      }
+    } else {
+      delete completedTopics[topic]
+    }
+    localStorage.setItem("completedTopics", JSON.stringify(completedTopics))
+
+    return { success: true }
   } catch (error) {
-    console.error('Error updating topic completion:', error);
-    return { success: false, error: error instanceof Error ? error.message : 'Failed to update completion status' };
+    console.error('Error updating topic completion:', error)
+    // You might want to show an error message to the user here
+    return { success: false, error: 'Failed to update completion status' }
   }
 }
-
-// Create a debounced version of the API call with proper typing
-const debouncedMarkTopicAsComplete: (topic: string, isCompleted: boolean) => Promise<ApiResponse> = 
-  debounce(markTopicAsComplete, 1000);
 
 // Type definitions
 type VideoBookmark = {
@@ -360,15 +360,17 @@ export default function LearningPage() {
   const [selectedVideo, setSelectedVideo] = useState<YouTubeVideo | null>(null)
   const [isCompleted, setIsCompleted] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
-  const [summary, setSummary] = useState<{ summary: string } | null>(null)
+  const [summary, setSummary] = useState<{ summary: string; keyPoints: string[] } | null>(null)
   const [isSummaryLoading, setIsSummaryLoading] = useState(false)
   const [darkMode, setDarkMode] = useState(false)
+  const [transcript, setTranscript] = useState<{ time: string; text: string }[]>([])
+  const [isTranscriptLoading, setIsTranscriptLoading] = useState(false)
   const [bookmarks, setBookmarks] = useState<VideoBookmark[]>([])
   const [newBookmarkLabel, setNewBookmarkLabel] = useState("")
   const [newBookmarkTime, setNewBookmarkTime] = useState("0:00")
   const [notes, setNotes] = useState<Note[]>([])
   const [currentNote, setCurrentNote] = useState("")
-  const [activeTab, setActiveTab] = useState("notes")
+  const [activeTab, setActiveTab] = useState("transcript")
   const [player, setPlayer] = useState<any>(null)
   const [apiLoaded, setApiLoaded] = useState(false)
   const [isRefreshingVideos, setIsRefreshingVideos] = useState(false)
@@ -428,6 +430,7 @@ export default function LearningPage() {
   useEffect(() => {
     if (selectedVideo) {
       loadSummary()
+      loadTranscript()
 
       // Load saved notes and bookmarks from localStorage
       const savedNotes = localStorage.getItem(`notes-${selectedVideo.id}`)
@@ -491,6 +494,21 @@ export default function LearningPage() {
       console.error("Failed to generate summary:", error)
     } finally {
       setIsSummaryLoading(false)
+    }
+  }
+
+  const loadTranscript = async () => {
+    if (!selectedVideo) return
+
+    setIsTranscriptLoading(true)
+    setTranscript([])
+    try {
+      const videoTranscript = await getVideoTranscript(selectedVideo.id)
+      setTranscript(videoTranscript)
+    } catch (error) {
+      console.error("Failed to load transcript:", error)
+    } finally {
+      setIsTranscriptLoading(false)
     }
   }
 
@@ -637,81 +655,27 @@ export default function LearningPage() {
       const [courseName, subTopic] = parts
       // Add both course name and sub-topic for better context in search
       return `${subTopic} `
-    }
+  }
     
     // Fallback: use the full topic if no separator is found
     return `${fullTopic}`
   }
-
-  // Update the handleMarkComplete function with proper types
+  // Move handleMarkComplete inside the component
   const handleMarkComplete = async () => {
     try {
-      const newCompletionState = !isCompleted;
-      const displayTopic = getDisplayTopic(topic);
-      
-      console.log('handleMarkComplete called with:', {
-        topic,
-        displayTopic,
-        isCompleted: newCompletionState
-      });
-      
-      // Immediately update UI state
-      setIsCompleted(newCompletionState);
-      console.log('isCompleted set to:', newCompletionState);
-      
-      // Update local storage immediately for UI consistency
-      const completedTopics = JSON.parse(localStorage.getItem("completedTopics") || "{}");
-      if (newCompletionState) {
-        completedTopics[topic] = {
-          completedAt: new Date().toISOString(),
-          topicName: displayTopic
-        };
+      const newCompletionState = !isCompleted
+      const hh = getDisplayTopic(topic);
+      const result = await markTopicAsComplete(hh, newCompletionState)
+
+      if (result.success) {
+        setIsCompleted(newCompletionState)  // Update the state directly
       } else {
-        delete completedTopics[topic];
+        console.error('Failed to mark topic as complete:', result.error)
       }
-      localStorage.setItem("completedTopics", JSON.stringify(completedTopics));
-      
-      // Make debounced API call in the background
-      debouncedMarkTopicAsComplete(topic, newCompletionState)
-        .then((result: ApiResponse) => {
-          if (!result.success) {
-            // If API call fails, revert the UI state
-            setIsCompleted(!newCompletionState);
-            const revertedTopics = JSON.parse(localStorage.getItem("completedTopics") || "{}");
-            if (!newCompletionState) {
-              revertedTopics[topic] = {
-                completedAt: new Date().toISOString(),
-                topicName: displayTopic
-              };
-            } else {
-              delete revertedTopics[topic];
-            }
-            localStorage.setItem("completedTopics", JSON.stringify(revertedTopics));
-            
-            // You might want to show an error toast/notification here
-            console.error('Failed to update completion status:', result.error);
-          }
-        })
-        .catch((error: Error) => {
-          // Handle any unexpected errors
-          console.error('Unexpected error:', error);
-          // Revert UI state on error
-          setIsCompleted(!newCompletionState);
-          const revertedTopics = JSON.parse(localStorage.getItem("completedTopics") || "{}");
-          if (!newCompletionState) {
-            revertedTopics[topic] = {
-              completedAt: new Date().toISOString(),
-              topicName: displayTopic
-            };
-          } else {
-            delete revertedTopics[topic];
-          }
-          localStorage.setItem("completedTopics", JSON.stringify(revertedTopics));
-        });
     } catch (error) {
-      console.error('Error in handleMarkComplete:', error);
+      console.error('Error marking topic as complete:', error)
     }
-  };
+  }
 
   return (
     <div
@@ -826,19 +790,23 @@ export default function LearningPage() {
               </CardFooter>
             </Card>
 
-            {/* Sidebar with tabs for notes and bookmarks - takes up 1/3 of the width */}
+            {/* Sidebar with tabs for transcript, notes, and bookmarks - takes up 1/3 of the width */}
             <Card
               className={`${darkMode ? "bg-gray-800/80 border-gray-700" : "bg-white/80 border-indigo-100/50"} backdrop-blur-sm shadow-lg rounded-2xl overflow-hidden`}
             >
               <div className="h-full flex flex-col">
                 <Tabs
-                  defaultValue="notes"
+                  defaultValue="transcript"
                   value={activeTab}
                   onValueChange={setActiveTab}
                   className="h-full flex flex-col"
                 >
                   <div className={`py-3 px-4 border-b ${darkMode ? "border-gray-700" : "border-indigo-100/50"}`}>
-                    <TabsList className="grid grid-cols-2 w-full">
+                    <TabsList className="grid grid-cols-3 w-full">
+                      <TabsTrigger value="transcript" className={darkMode ? "data-[state=active]:bg-gray-700" : ""}>
+                        <FileText className="h-4 w-4 mr-1" />
+                        Transcript
+                      </TabsTrigger>
                       <TabsTrigger value="notes" className={darkMode ? "data-[state=active]:bg-gray-700" : ""}>
                         <StickyNote className="h-4 w-4 mr-1" />
                         Notes
@@ -851,6 +819,43 @@ export default function LearningPage() {
                   </div>
 
                   <div className="flex-1 overflow-hidden">
+                    <TabsContent value="transcript" className="m-0 h-full">
+                      <div className={`p-4 ${darkMode ? "text-gray-200" : ""} h-full`}>
+                        <h3 className="text-lg font-medium mb-3">Video Transcript</h3>
+                        {isTranscriptLoading ? (
+                          <div className="space-y-3">
+                            {[...Array(10)].map((_, i) => (
+                              <div key={i} className="flex">
+                                <Skeleton className={`h-5 w-12 mr-3 ${darkMode ? "bg-gray-700" : ""}`} />
+                                <Skeleton className={`h-5 flex-1 ${darkMode ? "bg-gray-700" : ""}`} />
+                              </div>
+                            ))}
+                          </div>
+                        ) : transcript.length > 0 ? (
+                          <ScrollArea className="h-[500px] pr-4">
+                            {transcript.map((line, index) => (
+                              <div
+                                key={index}
+                                className="mb-2 group flex cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 p-1 rounded"
+                                onClick={() => seekToTime(line.time)}
+                              >
+                                <span
+                                  className={`inline-block w-12 font-mono text-sm ${darkMode ? "text-gray-400" : "text-gray-500"}`}
+                                >
+                                  {line.time}
+                                </span>
+                                <p className="flex-1">{line.text}</p>
+                              </div>
+                            ))}
+                          </ScrollArea>
+                        ) : (
+                          <p className={`text-center py-8 ${darkMode ? "text-gray-400" : "text-gray-500"}`}>
+                            Transcript not available for this video.
+                          </p>
+                        )}
+                      </div>
+                    </TabsContent>
+
                     <TabsContent value="notes" className="m-0 h-full">
                       <div className={`p-4 ${darkMode ? "text-gray-200" : ""} h-full`}>
                         <h3 className="text-lg font-medium mb-3">Your Notes</h3>
@@ -1088,6 +1093,16 @@ export default function LearningPage() {
                     <div>
                       <h3 className={`text-lg font-medium mb-2 ${darkMode ? "text-white" : ""}`}>Overview</h3>
                       <p className={darkMode ? "text-gray-300" : "text-gray-700"}>{summary.summary}</p>
+                    </div>
+                    <div>
+                      <h3 className={`text-lg font-medium mb-2 ${darkMode ? "text-white" : ""}`}>Key Points</h3>
+                      <ul className="list-disc pl-5 space-y-1">
+                        {summary.keyPoints.map((point, index) => (
+                          <li key={index} className={darkMode ? "text-gray-300" : "text-gray-700"}>
+                            {point}
+                          </li>
+                        ))}
+                      </ul>
                     </div>
                   </div>
                 ) : (

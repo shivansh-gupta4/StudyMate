@@ -4,7 +4,7 @@ import { useState, FormEvent, useEffect } from 'react'
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { GraduationCap, Mail, Lock, Eye, EyeOff, User, Github, BookOpen, PenTool, Lightbulb, Loader2 } from 'lucide-react'
+import { GraduationCap, Mail, Lock, Eye, EyeOff, User, Github, BookOpen, PenTool, Lightbulb } from 'lucide-react'
 import {  doSocialLogin } from '@/app/actions';
 import { useRouter } from 'next/navigation';
 
@@ -45,7 +45,6 @@ export default function RegisterPage({ user }: RegisterPageProps) {
   const [emailError, setEmailError] = useState("");
   const [passwordError, setPasswordError] = useState("");
   const [generalError, setGeneralError] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
 
 
 
@@ -102,7 +101,6 @@ export default function RegisterPage({ user }: RegisterPageProps) {
     const userid= user?.id;
 
     if (validateForm()) {
-      setIsLoading(true);
       try {
         const response = await fetch('/api/register', {
           method: 'POST',
@@ -114,16 +112,15 @@ export default function RegisterPage({ user }: RegisterPageProps) {
         console.log("result",result);
   
         if (result.ok) {
-          // Success - use replace instead of push for faster navigation
-          router.replace(`/learning_choice/${result.user.id}`);
+          // Success
+          console.log('Registration successful', result.user);
+          router.push(`/learning_choice/${userid}`);
         } else {
           // Failure
           setGeneralError(result.message);
         }
       } catch (error) {
         setGeneralError("An error occurred. Please try again.");
-      } finally {
-        setIsLoading(false);
       }
     }
   };
@@ -267,20 +264,8 @@ export default function RegisterPage({ user }: RegisterPageProps) {
                 I agree to the <a href="#" className="text-blue-600 hover:underline">Terms and Conditions</a>
               </label>
             </div>
-            <Button 
-              type="submit" 
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-full transition duration-300 relative group overflow-hidden"
-              disabled={isLoading}
-            >
-              <span className={`flex items-center justify-center ${isLoading ? 'opacity-0' : 'opacity-100'} transition-opacity duration-200`}>
-                Register
-              </span>
-              {isLoading && (
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                </div>
-              )}
-              <div className="absolute inset-0 bg-gradient-to-r from-blue-400 to-blue-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+            <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-full transition duration-300">
+              Register
             </Button>
           </form>
           <div className="relative px-8">
