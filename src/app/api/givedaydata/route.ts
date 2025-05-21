@@ -12,11 +12,21 @@ export async function POST(request: NextRequest) {
         }
         const studyPlan = await prismaClient.studyPlan.findUnique({
             where: { userId: user.id },
-            include: {
+            select: {
+                id: true,
+                CourseProgress: true,
+                createdAt: true,
+                totalDays: true,
+                planName: true,
                 days: {
                     where: { dayNumber: daynumber },
-                    include: {
-                        topics: true // Include topics for the day
+                    select: {
+                        topics: {
+                            select: {
+                                topicData: true,
+                                completed: true
+                            }
+                        }
                     }
                 }
             }
@@ -33,7 +43,7 @@ export async function POST(request: NextRequest) {
         ]);
 
         return NextResponse.json({ 
-            message: [topicsData, day.progress, studyPlan.createdAt, studyPlan.totalDays,studyPlan.planName] 
+            message: [topicsData, studyPlan.CourseProgress, studyPlan.createdAt, studyPlan.totalDays, studyPlan.planName] 
         }, { status: 200 });
 
     } catch (error) {

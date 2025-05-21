@@ -28,21 +28,25 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { useSession, signOut } from 'next-auth/react'
 
 const inter = Inter({ subsets: ['latin'] })
 
 // Mock user data - in a real app, this would come from your auth system
-const user = {
-  name: "Jane Doe",
-  avatar: "/placeholder.svg?height=32&width=32",
-}
+
 
 export default function RootLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
+  const { data: session } = useSession()
   const pathname = usePathname()
+
+  const user = {
+    name: session?.user?.name || "Jane Doe",
+    avatar: "/placeholder.svg?height=32&width=32",
+  }
 
   return (
     <html lang="en">
@@ -76,7 +80,7 @@ export default function RootLayout({
                       <div className="flex flex-col space-y-1">
                         <p className="text-sm font-medium leading-none">{user.name}</p>
                         <p className="text-xs leading-none text-muted-foreground">
-                          {user.name.toLowerCase().replace(' ', '.')}@example.com
+                          {session?.user?.email}
                         </p>
                       </div>
                     </DropdownMenuLabel>
@@ -96,7 +100,9 @@ export default function RootLayout({
                     <DropdownMenuSeparator />
                     <DropdownMenuItem>
                       <LogOut className="mr-2 h-4 w-4" />
+                      <button onClick={() => signOut()}>
                       <span>Log out</span>
+                      </button>
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>

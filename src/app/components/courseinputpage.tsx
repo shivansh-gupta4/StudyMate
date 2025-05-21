@@ -9,6 +9,7 @@ import { signIn } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { generateResponse } from "@/app/services/groqApi"; 
 import Link from 'next/link'
+import { useSession } from 'next-auth/react'
 
 
 interface User {
@@ -34,12 +35,18 @@ export default function CourseInputPage({ user }: Learning_choicePageProps) {
   const [error, setError] = useState('')
   const [currentQuote, setCurrentQuote] = useState(0)
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 })
-
+  const [isLoading, setIsLoading] = useState(false)
+  const { data: session, status } = useSession();
   const router= useRouter();
 
   const handleClick = async (e: FormEvent<HTMLFormElement>) => {
     console.log("clicked");
-   e.preventDefault();
+    e.preventDefault();
+    
+    if (isLoading) return; // Prevent multiple submissions
+    
+    setIsLoading(true);
+    setError('');
     
     const learning_path = course;
     const learning_days = parseInt(days, 10);
@@ -55,17 +62,16 @@ export default function CourseInputPage({ user }: Learning_choicePageProps) {
     let studyPlanString;
     try {
        studyPlanString = await generateResponse(prompt);
-  } catch (error) {
+    } catch (error) {
+      setIsLoading(false);
       if (error instanceof Error) {
-          setError("Please try using a more appropriate deadline or a comprehensive course"); // This assumes setError expects a string
+          setError("Please try using a more appropriate deadline or a comprehensive course");
       } else {
           setError("Please try using a more appropriate deadline or a comprehensive course");
       }
       return;
-  }
+    }
     
- 
-  
     try {
       const response = await fetch('/api/learning_path', {
         method: 'POST',
@@ -86,36 +92,44 @@ export default function CourseInputPage({ user }: Learning_choicePageProps) {
     
         if (!response.ok) {
             console.error("Error saving study plan:", result.error);
+            setIsLoading(false);
             return;
         }
     
-        console.log(result.message); // "Study plan saved successfully"
+        console.log(result.message);
     } catch (error) {
         console.error("Network or server error:", error);
+        setIsLoading(false);
+        return;
     }
     
   
       if (result.ok) {
         const signInResult = await signIn("credentials", {
-          redirect: false,  // Avoid auto redirect, handle it manually
+          redirect: false,
           email: user_mail,
           password: user_password,
+          callbackUrl: '/dashboard/calendar'
         });
         console.log("sign in result", signInResult);
   
         if (signInResult?.ok) {
-          // Redirect user to dashboard after successful sign-in
-         router.push('/dashboard/calendar');
+          // Wait for a short moment to ensure session is established
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          router.push('/dashboard/calendar');
         } else {
           console.error("Sign-in failed", signInResult?.error);
+          setIsLoading(false);
         }
+      } else {
+        console.log(result);
+        setIsLoading(false);
       }
-      else
-      console.log(result);
     } catch (error) {
       console.log(error);
+      setIsLoading(false);
     }
-  };
+};
 
   const quotes = [
     "The capacity to learn is a gift; the ability to learn is a skill; the willingness to learn is a choice. - Brian Herbert",
@@ -213,6 +227,7 @@ export default function CourseInputPage({ user }: Learning_choicePageProps) {
                     onChange={(e) => setCourse(e.target.value)}
                     className="pl-14 pr-4 py-4 w-full border-2 border-blue-300 rounded-full focus:ring-2 focus:ring-purple-400 focus:border-purple-400 text-lg shadow-sm transition-all duration-300 group-hover:shadow-md"
                     required
+                    disabled={isLoading}
                  />
                   <Book className="absolute left-5 top-1/2 transform -translate-y-1/2 text-blue-500 w-6 h-6 transition-all duration-300 group-hover:scale-110" />
                 </div>
@@ -232,6 +247,7 @@ export default function CourseInputPage({ user }: Learning_choicePageProps) {
                     min="1"
                     max="90"
                     className="pl-14 pr-4 py-4 w-full border-2 border-blue-300 rounded-full focus:ring-2 focus:ring-purple-400 focus:border-purple-400 text-lg shadow-sm transition-all duration-300 group-hover:shadow-md"
+                    disabled={isLoading}
                   />
                   <Calendar className="absolute left-5 top-1/2 transform -translate-y-1/2 text-blue-500 w-6 h-6 transition-all duration-300 group-hover:scale-110" />
                 </div>
@@ -239,8 +255,22 @@ export default function CourseInputPage({ user }: Learning_choicePageProps) {
             </div>
             <br/>
             <p className="text-red-500 text-center">{error}</p>
-            <Button type='submit' className="w-full bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white text-xl font-bold py-4 px-6 rounded-full transition duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl">
-              Create My Learning Plan
+            <Button 
+              type='submit' 
+              className={`w-full bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white text-xl font-bold py-4 px-6 rounded-full transition duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl ${isLoading ? 'opacity-75 cursor-not-allowed' : ''}`}
+              disabled={isLoading}
+            >
+              {isLoading ? (
+                <div className="flex items-center justify-center">
+                  <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Creating Your Learning Plan...
+                </div>
+              ) : (
+                'Create My Learning Plan'
+              )}
             </Button>
             </form>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-12">
