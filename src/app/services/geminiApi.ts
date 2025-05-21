@@ -40,3 +40,5 @@ export async function generateResponse(userInput: string): Promise<string> {
     throw new Error("Failed to generate response");
   }
 }
+
+

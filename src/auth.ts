@@ -5,10 +5,25 @@ import GoogleProvider from "next-auth/providers/google";
 import CredentialsProvider from "next-auth/providers/credentials";
 import prismaClient from "@/app/lib/db"; // Assuming you have Prisma set up
 
-
+// Define custom types
 declare module "next-auth" {
   interface Session {
-    callbackUrl?: string; // Add the callbackUrl property
+    callbackUrl?: string;
+    user: {
+      id?: string;
+      email: string;
+      name?: string | null;
+      courseFilled?: boolean;
+      courseName?: string | null;
+    };
+  }
+
+  interface JWT {
+    id?: string;
+    email: string;
+    name?: string | null;
+    courseFilled?: boolean;
+    courseName?: string | null;
   }
 }
 
@@ -34,72 +49,91 @@ export const authOptions: NextAuthOptions = {
         email: { label: "Email", type: "text" },
         password: { label: "Password", type: "password" },
       },
-      authorize: async(credentials)=>{
-
-        console.log("Authorizing with credentials:", credentials);
-        
+      authorize: async(credentials) => {
         if (!credentials?.email || !credentials?.password) {
           throw new Error("Email and password are required");
         }
 
-        // Here you can implement your logic for user validation, for example:
-        // 1. Query the database to check if the user exists
-        const user = await prismaClient.user.findUnique({
-          where: { email: credentials.email },
-        });
+        try {
+          const user = await prismaClient.user.findUnique({
+            where: { email: credentials.email },
+          });
 
-        if (!user) {
-          throw new Error("No user found with this email");
+          if (!user) {
+            throw new Error("No user found with this email");
+          }
+
+          return {
+            id: user.id.toString(),
+            email: user.email,
+            name: user.name,
+          };
+        } catch (error) {
+          console.error("Error in credentials authorization:", error);
+          throw new Error("Authentication failed");
         }
-
-        // 3. Return the user if validation is successful
-        return {
-          id: user.id.toString(),
-          email: user.email,
-          name: user.name,
-        };
       },
     }),
   ],
   session: {
-    strategy: 'jwt', // Use JWT for session management
+    strategy: 'jwt',
+    maxAge: 7 * 24 * 60 * 60, // 7 days
   },
   jwt: {
-    maxAge: 60 * 60 * 24 * 7, // 7 days (in seconds)
+    maxAge: 7 * 24 * 60 * 60, // 7 days
   },
   pages: {
-    signIn: "/auth/login", // Custom sign-in page
-    error: "/error",       // Custom error page
+    signIn: "/auth/login",
+    error: "/error",
   },
   callbacks: {
-    async signIn({ user, account, profile}) {
+    async signIn({ user, account, profile }) {
       if (!account) {
         console.error("Account is null, sign-in failed");
-        return false; // Prevent sign-in if account is null
+        return false;
       }
     
-      // Check if the provider is "credentials"
       if (account.provider === "credentials") {
-        // Automatically allow the sign-in by returning true
-        return true;
-      }
-      try {
-        // Ensure the email is defined and not null
-        const userEmail = user.email ?? undefined;
-        const provider= account?.provider;
+        try {
+          if (!user.email) {
+            console.error("Email is missing");
+            return false;
+          }
 
-        console.log(userEmail);
-        console.log(provider);
-        
-    
-        if (!userEmail || !provider) {
-          console.error("Email is missing or invalid.");
+          const existingUser = await prismaClient.user.findUnique({
+            where: { 
+              email: user.email 
+            },
+          });
+
+          if (!existingUser) {
+            console.error("No user found with this email");
+            return false;
+          }
+
+          if (existingUser.registered) {
+            if (existingUser.CourseFilled) {
+              return true;
+            } else {
+              return `/learning_choice/${existingUser.id}`;
+            }
+          } else {
+            return `/auth/register?id=${existingUser.id}`;
+          }
+        } catch (error) {
+          console.error("Error during credentials sign-in:", error);
+          return false;
+        }
+      }
+
+      try {
+        if (!user.email || !account.provider) {
+          console.error("Email or provider is missing");
           return false;
         }
     
         let providerEnumValue: Provider;
-
-        switch (provider.toLowerCase()) {
+        switch (account.provider.toLowerCase()) {
           case 'google':
             providerEnumValue = Provider.GOOGLE;
             break;
@@ -107,115 +141,96 @@ export const authOptions: NextAuthOptions = {
             providerEnumValue = Provider.GITHUB;
             break;
           default:
-            console.error("Unsupported provider:", provider);
+            console.error("Unsupported provider:", account.provider);
             return false;
         }
 
-        // Check if the user exists in the database
         const existingUser = await prismaClient.user.findUnique({
-          where: {
-            email: userEmail, // Safe to use as `string | undefined`
-          },
+          where: { email: user.email },
         });
-    
-        console.log("Existing user found:", !!existingUser);
-        console.log(existingUser);
 
-        if(existingUser?.registered)
-        console.log(existingUser.registered ? "User is registered" : "User is not registered");
-
-        // Handle based on formType
-        if (existingUser) {
-          console.log("user exists");
-
-          if (existingUser.registered) {
-            if(existingUser.CourseFilled)
-          return true;
-        else
-        return `/learning_choice/${existingUser.id}`;
+        if (existingUser?.registered) {
+          console.log(existingUser.registered ? "User is registered" : "User is not registered");
+          
+          if (existingUser.CourseFilled) {
+            return true;
           } else {
-            console.log("not registered");
-            return `/auth/register?id=${existingUser.id}`;
+            return `/learning_choice/${existingUser.id}`;
           }
-        } 
-        else 
-        {
-          console.log("user does not exist");
-          await prismaClient.user.create({
+        } else if (existingUser && !existingUser.registered) {
+          return `/auth/register?id=${existingUser.id}`;
+        } else {
+          const newUser = await prismaClient.user.create({
             data: {
-              email: userEmail,
+              email: user.email,
               name: user.name || profile?.name || '',
               provider: providerEnumValue,
               password: '',
               registered: false,
             },
           });
-
-            const existingUser = await prismaClient.user.findUnique({
-            where: {
-              email: userEmail, // Safe to use as `string | undefined`
-            },
-          });
-
-          if(existingUser){
-            const userId = existingUser.id;
-          return `/auth/register?id=${existingUser.id}`;
+          return `/auth/register?id=${newUser.id}`;
         }
-
-          return false;
-        }
-        
       } catch (error) {
-        console.error("Error during sign-in:", error);
-        return false; // Reject login on error
+        console.error("Error during social sign-in:", error);
+        return false;
       }
     },
-    async jwt({ token, user, account }) {
 
-  console.log("JWT Callback");
-  console.log("Token:", token);
-  console.log("User:", user);
-  console.log("Account:", account);
-      // This callback will handle token creation
+    async jwt({ token, user, account }) {
       if (user) {
-        // Store necessary information in the JWT token
-        token.id = user.id;
-        token.email = user.email;
-        token.name = user.name;
+        try {
+          const existingUser = await prismaClient.user.findUnique({
+            where: { email: user.email || '' },
+            include: {
+              studyPlan: true
+            }
+          });
+
+          if (existingUser) {
+            token.id = user.id;
+            token.email = user.email || '';
+            token.name = user.name || '';
+            token.courseFilled = existingUser.CourseFilled;
+            token.courseName = existingUser.studyPlan?.planName || null;
+          }
+        } catch (error) {
+          console.error("Error in JWT callback:", error);
+        }
       }
       return token;
     },
 
     async session({ session, token }) {
-      // This callback ensures the session is populated with token data
-      if (session.user) {
-        
-        session.user.email = token.email as string;
-        session.user.name = token.name as string;
-       
-      } else {
-        // Initialize session.user if it doesn't exist
-        session.user = {
-          
-          email: token.email as string,
-          name: token.name as string,
-        
-        };
-      }
-      const existingUser = await prismaClient.user.findUnique({
-        where: {
-          email: token.email as string, // Safe to use as `string | undefined`
-        },
-      });
+      if (token) {
+        try {
+          if (session.user) {
+            session.user.id = token.id as string | undefined;
+            session.user.email = token.email as string;
+            session.user.name = token.name as string | null;
+            session.user.courseFilled = token.courseFilled as boolean | undefined;
+            session.user.courseName = token.courseName as string | null;
+          } else {
+            session.user = {
+              id: token.id as string | undefined,
+              email: token.email as string,
+              name: token.name as string | null,
+              courseFilled: token.courseFilled as boolean | undefined,
+              courseName: token.courseName as string | null,
+            };
+          }
 
-      if(existingUser){
-      if (existingUser.CourseFilled) {
-        session.callbackUrl = '/learning_choice';
-      } else {
-        session.callbackUrl = '/dashboard/calendar';
+          const existingUser = await prismaClient.user.findUnique({
+            where: { email: token.email as string },
+          });
+
+          if (existingUser?.CourseFilled) {
+            session.callbackUrl = '/dashboard/calendar';
+          }
+        } catch (error) {
+          console.error("Error in session callback:", error);
+        }
       }
-    }
-  
       return session;
     },
   },
