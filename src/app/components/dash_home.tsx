@@ -12,6 +12,7 @@ interface StudyPlan {
   planName: string;
   totalDays: number;
   CourseProgress: number;
+  completedDays: number;
   days: {
     dayNumber: number;
     progress: number;
@@ -31,6 +32,7 @@ export default function HomePage() {
           throw new Error('Failed to fetch study plan');
         }
         const data = await response.json();
+        console.log(data);
         setStudyPlan(data);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'An error occurred');
@@ -80,15 +82,15 @@ export default function HomePage() {
       </div>
 
       {/* Quick Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Overall Progress</CardTitle>
             <Target className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{Math.round(studyPlan.CourseProgress * 100)}%</div>
-            <Progress value={studyPlan.CourseProgress * 100} className="mt-2" />
+            <div className="text-2xl font-bold">{studyPlan.CourseProgress.toFixed(2)}%</div>
+            <Progress value={studyPlan.CourseProgress} className="mt-2" />
           </CardContent>
         </Card>
 
@@ -98,19 +100,8 @@ export default function HomePage() {
             <Calendar className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{studyPlan.days.length}</div>
+            <div className="text-2xl font-bold">{studyPlan.completedDays}</div>
             <p className="text-xs text-muted-foreground">out of {studyPlan.totalDays} days</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Current Streak</CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">3 days</div>
-            <p className="text-xs text-muted-foreground">Keep it up!</p>
           </CardContent>
         </Card>
       </div>
@@ -118,8 +109,8 @@ export default function HomePage() {
       {/* Recent Progress */}
       <Card>
         <CardHeader>
-          <CardTitle>Recent Progress</CardTitle>
-          <CardDescription>Your last 3 days of study progress</CardDescription>
+          <CardTitle>Progress of All Days</CardTitle>
+          <CardDescription>Your progress of all days</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
@@ -130,9 +121,9 @@ export default function HomePage() {
                   <span>Day {day.dayNumber}</span>
                 </div>
                 <div className="flex items-center space-x-4">
-                  <Progress value={day.progress * 100} className="w-[100px]" />
+                  <Progress value={day.progress} className="w-[100px]" />
                   <span className="text-sm text-muted-foreground">
-                    {Math.round(day.progress * 100)}%
+                    {day.progress.toFixed(2)}%
                   </span>
                 </div>
               </div>
@@ -140,33 +131,6 @@ export default function HomePage() {
           </div>
         </CardContent>
       </Card>
-
-      {/* Quick Actions */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <Card className="hover:bg-accent/50 transition-colors cursor-pointer">
-          <Link href="/dashboard/study-plan" className="block p-6">
-            <CardHeader className="p-0">
-              <CardTitle className="flex items-center justify-between">
-                View Study Plan
-                <ChevronRight className="h-4 w-4" />
-              </CardTitle>
-              <CardDescription>Check your complete study schedule</CardDescription>
-            </CardHeader>
-          </Link>
-        </Card>
-
-        <Card className="hover:bg-accent/50 transition-colors cursor-pointer">
-          <Link href="/dashboard/progress" className="block p-6">
-            <CardHeader className="p-0">
-              <CardTitle className="flex items-center justify-between">
-                Track Progress
-                <ChevronRight className="h-4 w-4" />
-              </CardTitle>
-              <CardDescription>Update your daily study progress</CardDescription>
-            </CardHeader>
-          </Link>
-        </Card>
-      </div>
     </div>
   );
 }

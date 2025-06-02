@@ -80,7 +80,7 @@ export default function LoginForm() {
           // Success
           console.log('Login successful', result.user);
           if(result.user.CourseFilled)
-            signIn("credentials", { Email, password })
+            await signIn("credentials", { Email, password })
         else
         router.push('/auth/learning_choice');
         } else {

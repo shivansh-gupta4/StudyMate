@@ -27,13 +27,20 @@ import {
   Menu
 } from 'lucide-react'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { useSession, signOut } from 'next-auth/react'
+import { useState, useEffect } from 'react'
 
 const inter = Inter({ subsets: ['latin'] })
 
-// Mock user data - in a real app, this would come from your auth system
-
+// Navigation items with prefetch enabled
+const navigationItems = [
+  { name: 'Home', icon: <Home className="w-5 h-5" />, href: '/dashboard/home' },
+  { name: 'Calendar', icon: <CalendarIcon className="w-5 h-5" />, href: '/dashboard/calendar' },
+  { name: 'PYQ', icon: <FileText className="w-5 h-5" />, href: '/dashboard/pyq' },
+  { name: 'Services', icon: <Users className="w-5 h-5" />, href: '/dashboard/services' },
+  { name: 'Community', icon: <MessageCircle className="w-5 h-5" />, href: '/dashboard/community' },
+]
 
 export default function RootLayout({
   children,
@@ -42,11 +49,30 @@ export default function RootLayout({
 }) {
   const { data: session } = useSession()
   const pathname = usePathname()
+  const router = useRouter()
+  const [isNavigating, setIsNavigating] = useState(false)
+
+  // Prefetch all navigation routes on mount
+  useEffect(() => {
+    navigationItems.forEach(item => {
+      router.prefetch(item.href)
+    })
+  }, [router])
 
   const user = {
     name: session?.user?.name || "Jane Doe",
     avatar: "/placeholder.svg?height=32&width=32",
   }
+
+  const handleNavigation = (href: string) => {
+    setIsNavigating(true)
+    router.push(href)
+  }
+
+  // Reset navigation state when pathname changes
+  useEffect(() => {
+    setIsNavigating(false)
+  }, [pathname])
 
   return (
     <html lang="en">
@@ -114,21 +140,24 @@ export default function RootLayout({
           <nav className="bg-white/95 backdrop-filter backdrop-blur-lg border-b border-indigo-100/30 sticky top-14 z-10">
            <div className="w-full px-4 sm:px-6 lg:px-8">
                <div className="flex justify-between overflow-x-auto">
-                {[
-                  { name: 'Home', icon: <Home className="w-5 h-5" />, href: '/dashboard/home' },
-                  { name: 'Calendar', icon: <CalendarIcon className="w-5 h-5" />, href: '/dashboard/calendar' },
-                  { name: 'PYQ', icon: <FileText className="w-5 h-5" />, href: '/dashboard/pyq' },
-                  { name: 'Services', icon: <Users className="w-5 h-5" />, href: '/dashboard/services' },
-                  { name: 'Community', icon: <MessageCircle className="w-5 h-5" />, href: '/dashboard/community' },
-                ].map((item) => (
-                  <Link key={item.name} href={item.href} className="flex-shrink-0">
+                {navigationItems.map((item) => (
+                  <Link 
+                    key={item.name} 
+                    href={item.href} 
+                    className="flex-shrink-0"
+                    prefetch={true}
+                    onClick={(e) => {
+                      e.preventDefault()
+                      handleNavigation(item.href)
+                    }}
+                  >
                     <Button
                       variant="ghost"
                       className={`flex items-center justify-center py-4 px-4 h-14 w-32 transition-all duration-300 relative group overflow-hidden ${
                         pathname === item.href 
                           ? 'text-indigo-700 bg-indigo-100/70' 
                           : 'text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50/70'
-                      }`}
+                      } ${isNavigating ? 'opacity-50 pointer-events-none' : ''}`}
                     >
                       <div className={`flex flex-col items-center transition-all duration-300 ${
                         pathname === item.href ? '' : 'group-hover:-translate-y-10'
@@ -151,7 +180,13 @@ export default function RootLayout({
           {/* Main Content */}
           <main className="flex-grow w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 overflow-y-auto">
              <div className="w-full max-w-7xl mx-auto">
-               {children}
+               {isNavigating ? (
+                 <div className="flex items-center justify-center min-h-[200px]">
+                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+                 </div>
+               ) : (
+                 children
+               )}
              </div>
             </main>
         </div>

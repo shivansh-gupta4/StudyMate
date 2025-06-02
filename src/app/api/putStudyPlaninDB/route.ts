@@ -2,6 +2,61 @@ import { NextRequest, NextResponse } from 'next/server';
 import prismaClient from "@/app/lib/db";
 import { Prisma } from '@prisma/client';
 
+// Helper function to extract topics from any node in the study plan
+function extractTopics(node: any, prefix: string = ''): string[] {
+    const topics: string[] = [];
+    
+    // Handle primitive values
+    if (typeof node === 'string') {
+        return [prefix ? `${prefix}: ${node}` : node];
+    }
+    
+    // Handle arrays - process each item
+    if (Array.isArray(node)) {
+        for (const item of node) {
+            topics.push(...extractTopics(item, prefix));
+        }
+        return topics;
+    }
+    
+    // Handle objects - process each key
+    if (typeof node === 'object' && node !== null) {
+        let currentPrefix = prefix;
+        const keys = Object.keys(node);
+        
+        for (const key of keys) {
+            const value = node[key];
+            
+            // Skip arrays and objects for prefix building
+            if (typeof value === 'string') {
+                currentPrefix = currentPrefix 
+                    ? `${currentPrefix}: ${value}` 
+                    : value;
+            }
+        }
+        
+        // Process all values recursively
+        for (const key of keys) {
+            const value = node[key];
+            
+            // Skip primitive values that were already added to prefix
+            if (typeof value !== 'string') {
+                topics.push(...extractTopics(value, currentPrefix));
+            }
+        }
+        
+        // If no nested values, add the current prefix itself as a topic
+        if (topics.length === 0 && currentPrefix) {
+            topics.push(currentPrefix);
+        }
+        
+        return topics;
+    }
+    
+    // Fallback for other types
+    return prefix ? [prefix] : [];
+}
+
 export async function POST(request: NextRequest) {
     try {
         const { user_id, studyPlanString } = await request.json();
@@ -18,93 +73,87 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: "Invalid JSON format in studyPlanString" }, { status: 400 });
         }
 
+        // Validate study plan structure
+        if (!studyPlanJSON || typeof studyPlanJSON !== 'object' || 
+            !('study_plan' in studyPlanJSON) || !Array.isArray((studyPlanJSON as any).study_plan)) {
+            return NextResponse.json({ error: "Invalid study plan format" }, { status: 400 });
+        }
+
         // Save to database
         try {
             const updatedStudyPlan = await prismaClient.studyPlan.update({
-              where: {
-                userId: user_id,  // Identify the study plan by userId
-              },
-              data: {
-                 planData: studyPlanJSON,    // Update the course name
-              },
+                where: { userId: user_id },
+                data: { planData: studyPlanJSON },
             });
-        
-            console.log("Updated StudyPlan:", updatedStudyPlan);
-          
-          
-            // Extract days data from the studyPlanJSON and map to Day table format
-            const daysData = (studyPlanJSON as any).study_plan.map((day: any) => ({
-                dayNumber: day.day,
-                dayData: {
-                    subjects: day.subjects.map((subject: any) => ({
-                        name: subject.name || null,
-                        chapter: subject.chapter || null,
-                        sub_topics: subject.sub_topics || []
-                    }))
-                },
-                progress: new Prisma.Decimal(0),
-                studyPlanId: updatedStudyPlan.id
-            }));
 
-            // Create all Day records and their associated Topics in a transaction
+            // Process each day in the study plan
+            interface DayData {
+                dayNumber: number;
+                dayData: { subjects: any[] };
+                progress: Prisma.Decimal;
+                studyPlanId: number;
+                topics: string[];
+            }
+            const daysData: DayData[] = [];
+            const studyPlan = (studyPlanJSON as any).study_plan;
+
+            for (const day of studyPlan) {
+                if (!day || typeof day !== 'object' || !('day' in day)) continue;
+                
+                // Store the entire subjects array as-is
+                const subjects = Array.isArray(day.subjects) ? day.subjects : [];
+                const dayNumber = typeof day.day === 'number' ? day.day : parseInt(day.day) || 0;
+                
+                // Extract topics from the entire day object
+                const topics = extractTopics(day);
+                
+                daysData.push({
+                    dayNumber,
+                    dayData: { subjects },
+                    progress: new Prisma.Decimal(0),
+                    studyPlanId: updatedStudyPlan.id,
+                    topics
+                });
+            }
+
+            // Create all Day records and their associated Topics
             await prismaClient.$transaction(async (prisma) => {
-                // First create all days
+                // Create day records
                 const createdDays = await Promise.all(
-                    daysData.map((dayData: { dayNumber: number; dayData: any; progress: Prisma.Decimal; studyPlanId: number }) => 
-                        prisma.day.create({ data: dayData })
+                    daysData.map(data => 
+                        prisma.day.create({ 
+                            data: {
+                                dayNumber: data.dayNumber,
+                                dayData: data.dayData,
+                                progress: data.progress,
+                                studyPlanId: data.studyPlanId
+                            }
+                        })
                     )
                 );
 
-                // For each day, extract topics and create Topics records
-                for (const day of createdDays) {
-                    const dayData = day.dayData as any;
-                    const topics: string[] = [];
-
-                    // Using the same logic as in dateplanner.tsx
-                    if (dayData.subjects) {
-                        dayData.subjects.forEach((subject: any) => {
-                            let baseString = '';
-                            
-                            if (subject.name && subject.chapter) {
-                                baseString = `${subject.name}: ${subject.chapter}`;
-                            } else if (subject.name) {
-                                baseString = subject.name;
-                            } else if (subject.chapter) {
-                                baseString = subject.chapter;
-                            }
-
-                            if (subject.sub_topics.length === 0) {
-                                if (baseString) {
-                                    topics.push(baseString);
-                                }
-                            } else {
-                                subject.sub_topics.forEach((subtopic: any) => {
-                                    if (baseString) {
-                                        topics.push(`${baseString}: ${subtopic}`);
-                                    } else {
-                                        topics.push(`${subtopic}`);
-                                    }
-                                });
-                            }
+                // Create topic records
+                for (let i = 0; i < createdDays.length; i++) {
+                    const day = createdDays[i];
+                    const topics = daysData[i].topics;
+                    
+                    if (topics.length > 0) {
+                        await prisma.topics.createMany({
+                            data: topics.map((topic: string) => ({
+                                dayId: day.id,
+                                daynumber: day.dayNumber,
+                                topicData: { topic },
+                                completed: false
+                            }))
                         });
                     }
-
-                    // Create Topics records for this day
-                    await prisma.topics.createMany({
-                        data: topics.map((topic, index) => ({
-                            dayId: day.id,
-                            daynumber: day.dayNumber,
-                            topicData: { topic },
-                            completed: false
-                        }))
-                    });
                 }
             });
-      
-      }
-          catch (error) {
+
+        } catch (error) {
             console.error("Error updating StudyPlan:", error);
-          }
+            return NextResponse.json({ error: "Database update failed" }, { status: 500 });
+        }
 
         return NextResponse.json({ message: "Study plan saved successfully" });
     } catch (error) {

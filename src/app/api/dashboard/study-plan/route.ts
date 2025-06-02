@@ -10,19 +10,19 @@ export async function GET(request: NextRequest) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
+        // Fetch user with study plan and topics in a single optimized query
         const user = await prismaClient.user.findUnique({
             where: { email: session.user.email },
             include: {
                 studyPlan: {
                     include: {
                         days: {
-                            orderBy: {
-                                dayNumber: 'desc'
-                            },
-                            take: 3,
-                            select: {
-                                dayNumber: true,
-                                progress: true
+                            include: {
+                                topics: {
+                                    select: {
+                                        completed: true
+                                    }
+                                }
                             }
                         }
                     }
@@ -35,15 +35,45 @@ export async function GET(request: NextRequest) {
         }
 
         const studyPlan = user.studyPlan;
+        const totalDays = studyPlan.totalDays;
+        
+        // Initialize days array with proper length
+        const daysArray = new Array(totalDays).fill(null).map((_, index) => ({
+            dayNumber: index + 1,
+            progress: 0
+        }));
+
+        let completedDaysCount = 0;
+        let totalCompletedTopics = 0;
+        let totalTopics = 0;
+
+        // Process each day and update the days array
+        studyPlan.days.forEach(day => {
+            const dayIndex = day.dayNumber - 1;
+            if (dayIndex >= 0 && dayIndex < totalDays) {
+                const dayTopics = day.topics;
+                const completedTopics = dayTopics.filter(topic => topic.completed).length;
+                const dayProgress = dayTopics.length > 0 ? (completedTopics / dayTopics.length) * 100 : 0;
+                
+                daysArray[dayIndex].progress = dayProgress;
+                
+                // Count completed days (100% progress)
+                if (dayProgress === 100) {
+                    completedDaysCount++;
+                }
+
+                totalCompletedTopics += completedTopics;
+                totalTopics += dayTopics.length;
+            }
+        });
+
         const response = {
             id: studyPlan.id,
             planName: studyPlan.planName,
-            totalDays: studyPlan.totalDays,
-            CourseProgress: Number(studyPlan.CourseProgress),
-            days: studyPlan.days.map(day => ({
-                dayNumber: day.dayNumber,
-                progress: Number(day.progress) / 100 // Convert to decimal for frontend
-            }))
+            totalDays: totalDays,
+            completedDays: completedDaysCount,
+            CourseProgress: totalTopics > 0 ? (totalCompletedTopics / totalTopics) * 100 : 0,
+            days: daysArray
         };
 
         return NextResponse.json(response, { status: 200 });

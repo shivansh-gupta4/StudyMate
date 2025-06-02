@@ -23,7 +23,7 @@ export async function generateResponse(userInput: string): Promise<string> {
         }
       ],
       "model": "llama3-8b-8192",
-      "temperature": 0.22,
+      "temperature": 0,
       "max_tokens": 8192,
       "top_p": 1,
       "stream": false,

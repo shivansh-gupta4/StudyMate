@@ -3,13 +3,11 @@
 /* eslint-disable react/no-unescaped-entities */
 import Link from "next/link"
 import Image from "next/image"
-import { useRouter } from "next/router"
-import { useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { useSession, signIn, signOut } from "next-auth/react"
 import { GraduationCap, Target, CalendarDays, Youtube, Users, Headphones, BookOpen } from "lucide-react"
 import Header from "@/app/components/header"
-import Redirect from '@/app/components/redirect'
+import HowItWorks from "./howitworks"
 
 export default function LandingPage() {
   const { data: session, status } = useSession();
@@ -29,7 +27,7 @@ export default function LandingPage() {
             className="absolute inset-0"
           />
           <div className="absolute inset-0 bg-blue-900/70" />
-          <div className="relative z-10 text-center px-4 sm:px-6 lg:px-8 max-w-4xl">
+          <div className="relative z-9 text-center px-4 sm:px-6 lg:px-8 max-w-4xl">
             <h1 className="text-4xl sm:text-5xl md:text-6xl font-extrabold text-white mb-6">
               You Set the Goals,<br />We Chart the Course to Success
             </h1>
@@ -82,6 +80,7 @@ export default function LandingPage() {
             </div>
           </div>
         </section>
+        <HowItWorks/>
         <section className="w-full py-16 md:py-24 lg:py-32 bg-gradient-to-r from-blue-600 to-blue-800">
           <div className="container px-4 md:px-6">
             <div className="grid gap-10 lg:grid-cols-2 items-center">
