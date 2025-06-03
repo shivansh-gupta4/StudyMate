@@ -34,7 +34,7 @@ export default function LandingPage() {
             <p className="text-xl sm:text-2xl md:text-3xl text-white mb-8">
               Where Ambition Meets Achievement
             </p>
-            <Link href='/dashboard'>
+            <Link href='/dashboard/calendar'>
             <Button className="bg-yellow-500 text-blue-900 hover:bg-yellow-400 text-lg py-2 px-6 font-bold transition-all duration-300 transform hover:scale-105">
               Start Your Journey
             </Button>

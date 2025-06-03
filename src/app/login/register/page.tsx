@@ -1,8 +1,9 @@
 import RegisterPage from "@/app/components/registerform";
 
+
 const Register: React.FC = () => {
     return(
-     <RegisterPage/>
+     <RegisterPage user={null}/>
     );
 };
 

@@ -1,19 +1,30 @@
 {
-  "parser": "@babel/eslint-parser",
-  "extends": ["next", "next/core-web-vitals"],
+  "parser": "@typescript-eslint/parser",
+  "extends": [
+    "next",
+    "next/core-web-vitals",
+    "plugin:@typescript-eslint/recommended"
+  ],
   "parserOptions": {
-    "requireConfigFile": false,
-    "babelOptions": {
-      "presets": ["@babel/preset-env", "@babel/preset-react"]
-    },
     "ecmaVersion": 2021,
-    "sourceType": "module"
+    "sourceType": "module",
+    "ecmaFeatures": {
+      "jsx": true
+    }
   },
+  "plugins": ["@typescript-eslint"],
   "env": {
     "browser": true,
-    "es2021": true
+    "es2021": true,
+    "node": true
   },
   "rules": {
-    // Your custom rules
+    "@typescript-eslint/no-unused-vars": "warn",
+    "@typescript-eslint/no-explicit-any": "warn",
+    "react-hooks/exhaustive-deps": "warn",
+    "react/no-unescaped-entities": "off",
+    "@typescript-eslint/ban-types": "warn",
+    "prefer-const": "warn",
+    "@next/next/no-img-element": "warn"
   }
 }

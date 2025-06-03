@@ -1,9 +1,10 @@
 'use client';
 
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 
-const ErrorPage = () => {
+// Separate the main content into its own component
+const ErrorContent = () => {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const router = useRouter();
   const searchParams = useSearchParams(); // Get search parameters from the URL
@@ -25,6 +26,15 @@ const ErrorPage = () => {
       )}
       <button onClick={() => router.push('/auth/login')}>Go back to Login</button>
     </div>
+  );
+};
+
+// Main page component with Suspense
+const ErrorPage = () => {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <ErrorContent />
+    </Suspense>
   );
 };
 
