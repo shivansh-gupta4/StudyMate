@@ -625,18 +625,19 @@ export default function LearningPage() {
   const getSearchQuery = (fullTopic: string) => {
     // Split by the separator keyword
     const parts = fullTopic.split('+sep+')
+    console.log("parts", parts);
     
     if (parts.length === 1) {
       const [courseName, subTopic] = parts
       // Add both course name and sub-topic for better context in search
-      return `${subTopic}+${courseName} `
+      return `${subTopic}+${courseName}`
     }
     else if(parts.length > 1){
       const parts = fullTopic.split('+sep+')
     
       const [courseName, subTopic] = parts
       // Add both course name and sub-topic for better context in search
-      return `${subTopic} `
+      return `${subTopic}+${courseName}`
     }
     
     // Fallback: use the full topic if no separator is found

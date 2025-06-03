@@ -11,8 +11,8 @@ export default async function middleware(request: NextRequestWithAuth) {
   const isLearningPage = request.nextUrl.pathname.startsWith('/learning')
 
   // Handle auth pages (login, register)
-  if (isAuthPage) {
-    if (isAuth) {
+  if (isAuthPage || isLearningChoicePage) {
+    if (token?.courseFilled) {
       // If user is authenticated and tries to access auth pages, redirect to dashboard
       return NextResponse.redirect(new URL('/dashboard/calendar', request.url))
     }
@@ -20,7 +20,7 @@ export default async function middleware(request: NextRequestWithAuth) {
   }
 
   // Handle learning choice page
-  if (isLearningChoicePage || isLearningPage || isDashboardPage) {
+  if (isLearningPage || isDashboardPage) {
     if (!isAuth) {
       // If user is not authenticated, redirect to login
       return NextResponse.redirect(
