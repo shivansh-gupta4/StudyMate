@@ -135,16 +135,14 @@ export default function LandingPage() {
           <div className="grid gap-6 md:grid-cols-2">
             <div className="flex flex-col space-y-2">
               <h3 className="font-bold">Contact Us</h3>
-              <p>Student Support: support@studymate.com</p>
-              <p>Helpline: +1 (800) 123-4567</p>
+              <p>Feedback: shivanshgupta6372@gamil.com</p>
             </div>
             <div className="flex flex-col space-y-2 md:items-end">
               <h3 className="font-bold">Follow Us</h3>
               <div className="flex space-x-4">
-                <Link href="#" className="hover:text-yellow-300">Facebook</Link>
-                <Link href="#" className="hover:text-yellow-300">Twitter</Link>
-                <Link href="#" className="hover:text-yellow-300">Instagram</Link>
-                <Link href="#" className="hover:text-yellow-300">LinkedIn</Link>
+                <Link href="https://github.com/shivansh-gupta4" className="hover:text-yellow-300">GitHub</Link>
+                <Link href="https://x.com/shivanshgupta76" className="hover:text-yellow-300">Twitter</Link>
+                <Link href="https://www.linkedin.com/in/shivansh-gupta07/" className="hover:text-yellow-300">LinkedIn</Link>
               </div>
             </div>
           </div>
