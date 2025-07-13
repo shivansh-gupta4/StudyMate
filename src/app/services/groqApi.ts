@@ -13,7 +13,6 @@ export async function generateResponse(userInput: string): Promise<string> {
   const groq = new Groq({ apiKey, dangerouslyAllowBrowser: true });
 
   try {
-    console.log("Sending request to Groq API...");
 
     const chatCompletion = await groq.chat.completions.create({
       "messages": [
@@ -43,7 +42,6 @@ export async function generateResponse(userInput: string): Promise<string> {
     if (content == null) {
       throw new Error("Null or undefined content in API response");
     }
-    console.log("Received response from Groq API:", content);
     // The response should already be in JSON format
     return content;
 

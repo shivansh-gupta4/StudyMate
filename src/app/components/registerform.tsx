@@ -112,15 +112,16 @@ export default function RegisterPage({ user }: RegisterPageProps) {
         const result = await response.json();
   
         if (result.ok) {
-          // Success - use replace instead of push for faster navigation
+          // Success - keep loading state active during navigation
           router.replace(`/learning_choice/${result.user.id}`);
+          // Don't set loading to false here - let it persist during navigation
         } else {
-          // Failure
+          // Failure - stop loading and show error
           setGeneralError(result.message);
+          setIsLoading(false);
         }
       } catch (error) {
         setGeneralError("An error occurred. Please try again.");
-      } finally {
         setIsLoading(false);
       }
     }

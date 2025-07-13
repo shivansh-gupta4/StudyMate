@@ -40,7 +40,6 @@ export default function CourseInputPage({ user }: Learning_choicePageProps) {
   const router= useRouter();
 
   const handleClick = async (e: FormEvent<HTMLFormElement>) => {
-    console.log("clicked");
     e.preventDefault();
     
     if (isLoading) return; // Prevent multiple submissions
@@ -109,7 +108,6 @@ export default function CourseInputPage({ user }: Learning_choicePageProps) {
           password: user_password,
           callbackUrl: '/dashboard/calendar'
         });
-        console.log("sign in result", signInResult);
   
         if (signInResult?.ok) {
           // Wait for a short moment to ensure session is established
@@ -120,7 +118,6 @@ export default function CourseInputPage({ user }: Learning_choicePageProps) {
           setIsLoading(false);
         }
       } else {
-        console.log(result);
         setIsLoading(false);
       }
     } catch (error) {
