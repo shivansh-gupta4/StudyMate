@@ -32,7 +32,7 @@ export default function HomePage() {
           throw new Error('Failed to fetch study plan');
         }
         const data = await response.json();
-        console.log(data);
+        //  console.log(data);
         setStudyPlan(data);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'An error occurred');

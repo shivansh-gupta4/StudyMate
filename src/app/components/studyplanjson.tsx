@@ -35,7 +35,6 @@ async function generateAIStudyPlan(course: string, deadline: string) {
     const studyPlanJSON = JSON.stringify(studyPlan, null, 2);
 
     // Step 4: Output or use the generated study plan
-    console.log(studyPlanJSON);
 
     return studyPlanJSON;
   } catch (error) {
@@ -51,7 +50,7 @@ const TryComponent = () => {
     // Example usage of the function
     generateAIStudyPlan("Mass Transfer", "2024-09-30").then((plan) => {
       // This will log the study plan once it is generated
-      console.log(plan);
+      
     });
   }, []);
 

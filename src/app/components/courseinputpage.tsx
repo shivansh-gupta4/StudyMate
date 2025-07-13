@@ -95,8 +95,6 @@ export default function CourseInputPage({ user }: Learning_choicePageProps) {
             setIsLoading(false);
             return;
         }
-    
-        console.log(result.message);
     } catch (error) {
         console.error("Network or server error:", error);
         setIsLoading(false);

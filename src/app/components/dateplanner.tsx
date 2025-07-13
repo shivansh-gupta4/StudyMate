@@ -30,7 +30,6 @@ const fetchUserData = async (email: string) => {
     }
 
      data = result.message;
-     console.log("data", data);
   } catch (error) {
     console.error("Network or server error:", error);}
   
@@ -59,7 +58,7 @@ const fetchTopicsForDay = async (day: Number, email: string) => {
     }
 
     data = result.message;
-    console.log("data", data);
+    
   } catch (error) {
     console.error("Network or server error:", error);
   }

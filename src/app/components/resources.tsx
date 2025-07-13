@@ -625,7 +625,6 @@ export default function LearningPage() {
   const getSearchQuery = (fullTopic: string) => {
     // Split by the separator keyword
     const parts = fullTopic.split('+sep+')
-    console.log("parts", parts);
     
     if (parts.length === 1) {
       const [courseName, subTopic] = parts
@@ -649,16 +648,9 @@ export default function LearningPage() {
     try {
       const newCompletionState = !isCompleted;
       const displayTopic = getDisplayTopic(topic);
-      
-      console.log('handleMarkComplete called with:', {
-        topic,
-        displayTopic,
-        isCompleted: newCompletionState
-      });
-      
+                    
       // Immediately update UI state
       setIsCompleted(newCompletionState);
-      console.log('isCompleted set to:', newCompletionState);
       
       // Update local storage immediately for UI consistency
       const completedTopics = JSON.parse(localStorage.getItem("completedTopics") || "{}");

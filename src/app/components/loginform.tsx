@@ -74,11 +74,8 @@ export default function LoginForm() {
         });
   
         const result = await response.json();
-        console.log("result",result);
   
         if (result.ok) {
-          // Success
-          console.log('Login successful', result.user);
           if(result.user.CourseFilled)
             await signIn("credentials", { Email, password })
         else

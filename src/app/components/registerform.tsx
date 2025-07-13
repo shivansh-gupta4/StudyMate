@@ -31,7 +31,6 @@ export default function RegisterPage({ user }: RegisterPageProps) {
 
   const router= useRouter();
 
-  console.log("userid", user?.id);
   const userid= user?.id;
 
   // Default values if the user is null or undefined
@@ -111,7 +110,6 @@ export default function RegisterPage({ user }: RegisterPageProps) {
         });
   
         const result = await response.json();
-        console.log("result",result);
   
         if (result.ok) {
           // Success - use replace instead of push for faster navigation
