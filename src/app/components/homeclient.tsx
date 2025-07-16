@@ -135,7 +135,7 @@ export default function LandingPage() {
           <div className="grid gap-6 md:grid-cols-2">
             <div className="flex flex-col space-y-2">
               <h3 className="font-bold">Contact Us</h3>
-              <p>Feedback: shivanshgupta6372@gamil.com</p>
+              <p>Feedback: shivanshgupta6372@gmail.com</p>
             </div>
             <div className="flex flex-col space-y-2 md:items-end">
               <h3 className="font-bold">Follow Us</h3>
